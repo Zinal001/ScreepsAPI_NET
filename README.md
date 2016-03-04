@@ -34,10 +34,11 @@ using ScreepsAPI_NET;
 public void test()
 {
   API api = new API();
-  if(api.SignIn("ACCOUNT_NAME", "PASSWORD")
+  if(api.SignIn("ACCOUNT_NAME", "PASSWORD"))
   {
     Leaderboard board = api.FindLeaderboard("world", "2016-03", "Zinal001");
     console.log("Current Score/Rank: " + board.Score + ", " + board.Rank);
+    //Outputs something like: "Current Score/Rank: 158148, 75"
   }
 }
 
