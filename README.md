@@ -1,6 +1,6 @@
 # ScreepsAPI_NET
 
-A .NET 4.0 Library written in C# for interacting with Screeps REST API (https://screeps.com)
+A .NET Framework 4.0 Library written in C# for interacting with Screeps REST API (https://screeps.com)
 
 ##### Current Functionality:
 * Authorize against the API with email and password
