@@ -18,5 +18,14 @@ namespace ScreepsAPI_NET
             return default(T);
         }
 
+        public static T[] ToArray<T>(this JArray arr)
+        {
+            List<T> nArr = new List<T>();
+            foreach (JValue o in arr)
+                nArr.Add((T)o.Value);
+
+            return nArr.ToArray();
+        }
+
     }
 }

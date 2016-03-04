@@ -99,7 +99,7 @@ namespace ScreepsAPI_NET
         /// Set the Authorization Token to a specific value
         /// </summary>
         /// <param name="AuthToken"></param>
-        internal void SetAuthToken(String AuthToken)
+        public void SetAuthToken(String AuthToken)
         {
             this.AuthToken = AuthToken;
         }
@@ -450,6 +450,58 @@ namespace ScreepsAPI_NET
 
         #endregion
 
+        #region Room Information
+
+        /// <summary>
+        /// Get basic terrain info of a room
+        /// <para>Note: Requires no auth</para>
+        /// </summary>
+        /// <param name="roomName">The name of the room</param>
+        /// <returns></returns>
+        public TerrainData[] RoomTerrainData(String roomName)
+        {
+            wcReset();
+
+            JObject ret = this.Get("game/room-terrian", new NameValueCollection() {
+                { "room", roomName },
+                { "encoded", false.ToString() }
+            });
+
+            if(ret.GetValue<int>("ok") == 1)
+            {
+                return TerrainData.ParseList(ret.GetValue<JArray>("terrain"));
+            }
+
+            return new TerrainData[0];
+        }
+
+        /// <summary>
+        /// Get basic terrain info of a room in serialized form
+        /// See <see cref="SerializedTerrainData.Terrain"/> for info
+        /// <para>Note: Requires no auth</para>
+        /// </summary>
+        /// <param name="roomName">The name of the room</param>
+        /// <returns></returns>
+        public SerializedTerrainData RoomTerrainDataEncoded(String roomName)
+        {
+            wcReset();
+
+            JObject ret = this.Get("game/room-terrian", new NameValueCollection() {
+                { "room", roomName },
+                { "encoded", true.ToString() }
+            });
+
+            if (ret.GetValue<int>("ok") == 1)
+            {
+                JObject obj = ret.GetValue<JArray>("terrain").Value<JObject>();
+                return SerializedTerrainData.Parse(obj);
+            }
+
+            return null;
+        }
+
+        #endregion
+
         #region Leaderboard Information
 
         /// <summary>
@@ -639,6 +691,31 @@ namespace ScreepsAPI_NET
 
         #endregion
 
+        #region Console
+
+        public bool SendCommand(String command, out Exception ex)
+        {
+            ex = null;
+            if (this.AuthToken == null)
+            {
+                ex = new Exception("Not Signed In");
+                return false;
+            }
+            wcReset();
+
+            JObject ret = this.Post("user/console", new NameValueCollection() { { "expression", command } });
+
+            return ret.GetValue<int>("ok") == 1;
+        }
+
+        public bool SendCommand(String command)
+        {
+            Exception ex;
+            return SendCommand(command, out ex);
+        }
+
+        #endregion
+
         #region Private Functions
 
         /// <summary>
@@ -651,10 +728,24 @@ namespace ScreepsAPI_NET
         {
             wcReset();
 
+            wc.Headers.Add(HttpRequestHeader.Referer, "https://screeps.com/a/");
+            wc.Headers.Add("Origin", "https://screep.com");
             byte[] retBytes = wc.UploadValues(APIUrl + func, "POST", data);
             this.AuthToken = wc.Headers.Get("X-Token");
 
             String retStr = Encoding.UTF8.GetString(retBytes);
+
+            return JObject.Parse(retStr);
+        }
+
+        private JObject Post(String func, String data)
+        {
+            wcReset();
+
+            wc.Headers.Add(HttpRequestHeader.Referer, "https://screeps.com/a/");
+            wc.Headers.Add("Origin", "https://screep.com");
+            String retStr = wc.UploadString(APIUrl + func, "POST", data);
+            this.AuthToken = wc.Headers.Get("X-Token");
 
             return JObject.Parse(retStr);
         }

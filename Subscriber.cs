@@ -57,6 +57,8 @@ namespace ScreepsAPI_NET
         /// </summary>
         public event EventHandler<CloseEventArgs> ConnectionClosed;
 
+        private JArray _LastMemoryPayload = null;
+
         public Subscriber()
         {
 
@@ -156,13 +158,40 @@ namespace ScreepsAPI_NET
                 if (baseArgs.Stream_Name == "user:" + this.account._Id + "/cpu")
                     baseArgs = new CPUStreamEventArgs(payload);
                 else if (baseArgs.Stream_Name == "user:" + this.account._Id + "/console")
+                {
                     baseArgs = new ConsoleStreamEventArgs(payload);
-                else if (baseArgs.Stream_Name.StartsWith("user:" + this.account._Id + "/memory"))
-                    baseArgs = new MemoryStreamEventArgs(payload);
+                    if (((ConsoleStreamEventArgs)baseArgs).Log.Length == 0 && ((ConsoleStreamEventArgs)baseArgs).Results.Length == 0)
+                        return;
+
+                    foreach(String line in ((ConsoleStreamEventArgs)baseArgs).Results)
+                    {
+                        if (line.StartsWith("SUB_"))
+                            this.HandleSubscriberCommand(line);
+                    }
+
+                }
+                else if (baseArgs.Stream_Name.StartsWith("user:" + this.account._Id + "/memory") && _LastMemoryPayload != payload)
+                {
+                    baseArgs = new MemoryStreamEventArgs(payload, this.authToken, this.account._Id);
+                    _LastMemoryPayload = payload;
+                }
 
                 if (this.OnStreamUpdate != null)
                     this.OnStreamUpdate(this, baseArgs);
             }
+        }
+
+        private void HandleSubscriberCommand(String line)
+        {
+            Console.WriteLine("Subscriber Line: " + line);
+
+            if(line.StartsWith("SUB_PARSE "))
+            {
+                MemoryStreamEventArgs args = new MemoryStreamEventArgs("user:" + this.account._Id + "/memory/SUB", line.Substring(10));
+                if (this.OnStreamUpdate != null)
+                    this.OnStreamUpdate(this, args);
+            }
+
         }
 
         /// <summary>
@@ -219,12 +248,24 @@ namespace ScreepsAPI_NET
         public const String Console = "user:[USER_ID]/console";
 
         /// <summary>
-        /// Subscribe to a memory object.
-        /// Append this string with the path to the memory object
-        /// (Dont forget the / at the beginning of the appended string)
-        /// NOTE: retrieving an object in the memory will result in an unparseable string: [object Object]
+        /// <para>Subscribe to a memory object.</para>
+        /// <para>Append this string with the path to the memory object</para>
+        /// <para>(Dont forget the / at the beginning of the appended string)</para>
+        /// <para>NOTE: retrieving an object in the memory will result in an unparseable string: [object Object]</para>
         /// </summary>
         public const String Memory = "user:[USER_ID]/memory";
+
+        /// <summary>
+        /// Subscribe to a room to see structures and creeps
+        /// <para>Append the room name</para>
+        /// </summary>
+        public const String RoomOverlay = "roomMap2:";
+
+        /// <summary>
+        /// Subscribe to a room to see all objects and get some more detailed information of them
+        /// <para>Append the room name</para>
+        /// </summary>
+        public const String RoomDetails = "room:";
     }
 
     /// <summary>
@@ -247,6 +288,12 @@ namespace ScreepsAPI_NET
         {
             this.Stream_Name = Payload.Value<String>(0);
             this.RawData = Newtonsoft.Json.JsonConvert.SerializeObject(Payload.Value<Object>(1));
+        }
+
+        public StreamDataEventArgs(String Stream_Name, String RawData)
+        {
+            this.Stream_Name = Stream_Name;
+            this.RawData = RawData;
         }
     }
 
@@ -291,8 +338,8 @@ namespace ScreepsAPI_NET
         public ConsoleStreamEventArgs(JArray Payload): base(Payload)
         {
             JObject Data = Payload.Value<JObject>(1);
-            this.Log = Data.Value<String[]>("log");
-            this.Results = Data.Value<String[]>("results");
+            this.Log = Data.Value<JObject>("messages").Value<JArray>("log").ToArray<String>();
+            this.Results = Data.Value<JObject>("messages").Value<JArray>("results").ToArray<String>();
         }
     }
 
@@ -311,15 +358,29 @@ namespace ScreepsAPI_NET
         /// </summary>
         public Object Memory { get; private set; }
 
-        public MemoryStreamEventArgs(JArray Payload) : base(Payload)
+        public MemoryStreamEventArgs(JArray Payload, String AuthToken, String User_Id) : base(Payload)
         {
             String Data = Payload.Value<String>(1);
             this.RawMemory = Data;
 
             if (Data == "[object Object]")
+            {
+                String MemoryPath = "Memory." + this.Stream_Name.Replace("user:" + User_Id + "/memory/", "");
+
+                API api = new API();
+                api.SetAuthToken(AuthToken);
+                api.SendCommand("var sub_f = function(val) { \"use strict\"; let line = []; switch (typeof(val)) { case \"string\": return \"\\\"\" + val + \"\\\"\"; break; case \"number\": return val; break; case \"array\": line = []; for (let i = 0; i < val.length; i++) line.push(sub_f(val[i])); return \"[ \" + line.join(\", \") + \" ]\"; break; case \"object\": line = []; for (let k in val) line.push(k + \": \" + sub_f(val[k])); return \"{ \" + line.join(\", \") + \" }\"; break; default: return \"\" + val + \"\"; break; } }; \"SUB_PARSE \" + sub_f(" + MemoryPath + ")");
+                api = null;
                 this.Memory = new object();
+            }
             else
                 this.Memory = Newtonsoft.Json.JsonConvert.DeserializeObject(Data);
+        }
+
+        public MemoryStreamEventArgs(String Stream_Name, String RawMemory) : base(Stream_Name, RawMemory)
+        {
+            this.RawMemory = RawMemory;
+            this.Memory = JObject.Parse(RawMemory);
         }
     }
 
