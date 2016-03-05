@@ -48,7 +48,10 @@ namespace ScreepsAPI_NET
 
                 while(all.MoveNext())
                 {
-                    if(all.Current.Key != "walls" && all.Current.Key != "roads")
+                    if (all.Current.Key != "walls" && all.Current.Key != "roads")
+                    {
+
+                    }
                         
                 }
 
