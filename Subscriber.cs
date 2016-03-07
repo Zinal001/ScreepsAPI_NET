@@ -59,6 +59,8 @@ namespace ScreepsAPI_NET
 
         private JArray _LastMemoryPayload = null;
 
+        private String _LastMemoryPath = null;
+
         public Subscriber()
         {
 
@@ -174,7 +176,15 @@ namespace ScreepsAPI_NET
                 {
                     baseArgs = new MemoryStreamEventArgs(payload, this.authToken, this.account._Id);
                     _LastMemoryPayload = payload;
+
+                    if (((MemoryStreamEventArgs)baseArgs).Memory == null)
+                    {
+                        _LastMemoryPath = baseArgs.Stream_Name.Replace("user:" + this.account._Id + "/memory/", "");
+                        return;
+                    }
                 }
+                else if(baseArgs.Stream_Name.StartsWith("roomMap2:"))
+                    baseArgs = new RoomOverlayStreamEventArgs(payload);
 
                 if (this.OnStreamUpdate != null)
                     this.OnStreamUpdate(this, baseArgs);
@@ -187,9 +197,13 @@ namespace ScreepsAPI_NET
 
             if(line.StartsWith("SUB_PARSE "))
             {
-                MemoryStreamEventArgs args = new MemoryStreamEventArgs("user:" + this.account._Id + "/memory/SUB", line.Substring(10));
+                if (_LastMemoryPath == null)
+                    _LastMemoryPath = "SUB";
+                MemoryStreamEventArgs args = new MemoryStreamEventArgs("user:" + this.account._Id + "/memory/" + _LastMemoryPath, line.Substring(10));
                 if (this.OnStreamUpdate != null)
                     this.OnStreamUpdate(this, args);
+
+                _LastMemoryPath = null;
             }
 
         }
@@ -298,7 +312,7 @@ namespace ScreepsAPI_NET
     }
 
     /// <summary>
-    /// Stream arguments for a <see cref="Streams.CPU" stream/>
+    /// Stream arguments for a <see cref="Streams.CPU"/> stream
     /// </summary>
     public class CPUStreamEventArgs : StreamDataEventArgs
     {
@@ -321,7 +335,7 @@ namespace ScreepsAPI_NET
     }
 
     /// <summary>
-    /// Stream arguments for a <see cref="Streams.Console" stream/>
+    /// Stream arguments for a <see cref="Streams.Console"/> stream
     /// </summary>
     public class ConsoleStreamEventArgs: StreamDataEventArgs
     {
@@ -344,7 +358,7 @@ namespace ScreepsAPI_NET
     }
 
     /// <summary>
-    /// Stream arguments for a <see cref="Streams.Memory" stream/>
+    /// Stream arguments for a <see cref="Streams.Memory"/> stream
     /// </summary>
     public class MemoryStreamEventArgs : StreamDataEventArgs
     {
@@ -371,7 +385,7 @@ namespace ScreepsAPI_NET
                 api.SetAuthToken(AuthToken);
                 api.SendCommand("var sub_f = function(val) { \"use strict\"; let line = []; switch (typeof(val)) { case \"string\": return \"\\\"\" + val + \"\\\"\"; break; case \"number\": return val; break; case \"array\": line = []; for (let i = 0; i < val.length; i++) line.push(sub_f(val[i])); return \"[ \" + line.join(\", \") + \" ]\"; break; case \"object\": line = []; for (let k in val) line.push(k + \": \" + sub_f(val[k])); return \"{ \" + line.join(\", \") + \" }\"; break; default: return \"\" + val + \"\"; break; } }; \"SUB_PARSE \" + sub_f(" + MemoryPath + ")");
                 api = null;
-                this.Memory = new object();
+                this.Memory = null;
             }
             else
                 this.Memory = Newtonsoft.Json.JsonConvert.DeserializeObject(Data);
@@ -381,6 +395,23 @@ namespace ScreepsAPI_NET
         {
             this.RawMemory = RawMemory;
             this.Memory = JObject.Parse(RawMemory);
+        }
+    }
+
+    /// <summary>
+    /// Stream arguments for a <see cref="Streams.RoomOverlay"/> stream
+    /// </summary>
+    public class RoomOverlayStreamEventArgs : StreamDataEventArgs
+    {
+        /// <summary>
+        /// The retrieved overlay data
+        /// </summary>
+        public RoomOverlayData OverlayData { get; private set; }
+
+        public RoomOverlayStreamEventArgs(JArray Payload) : base(Payload)
+        {
+            JObject Data = Payload.Value<JObject>(1);
+            this.OverlayData = RoomOverlayData.Parse(Data);
         }
     }
 

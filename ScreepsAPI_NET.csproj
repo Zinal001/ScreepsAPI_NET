@@ -55,13 +55,17 @@
     <Compile Include="Leaderboard.cs" />
     <Compile Include="Message.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RoomOverlayData.cs" />
     <Compile Include="Season.cs" />
+    <Compile Include="SerializedTerrainData.cs" />
     <Compile Include="Subscriber.cs" />
+    <Compile Include="TerrainData.cs" />
     <Compile Include="TwitterAccount.cs" />
     <Compile Include="User.cs" />
+    <Compile Include="UserCode.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Visual Studio 2010\Projects\General Libraries\NET\websocket-sharp-master\websocket-sharp\websocket-sharp.csproj">
+    <ProjectReference Include="..\..\..\..\GitHub\websocket-sharp\websocket-sharp\websocket-sharp.csproj">
       <Project>{b357bac7-529e-4d81-a0d2-71041b19c8de}</Project>
       <Name>websocket-sharp</Name>
     </ProjectReference>

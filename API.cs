@@ -693,6 +693,12 @@ namespace ScreepsAPI_NET
 
         #region Console
 
+        /// <summary>
+        /// Send a command to the in-game console
+        /// </summary>
+        /// <param name="command">The command to send</param>
+        /// <param name="ex">The exception is set only if an error occurred</param>
+        /// <returns></returns>
         public bool SendCommand(String command, out Exception ex)
         {
             ex = null;
@@ -708,10 +714,231 @@ namespace ScreepsAPI_NET
             return ret.GetValue<int>("ok") == 1;
         }
 
+        /// <summary>
+        /// Send a command to the in-game console
+        /// NOTE: The exception is dismissed here
+        /// </summary>
+        /// <param name="command">The command to send</param>
+        /// <returns></returns>
         public bool SendCommand(String command)
         {
             Exception ex;
             return SendCommand(command, out ex);
+        }
+
+        #endregion
+
+        #region Code
+
+        /// <summary>
+        /// Download scripts from a branch
+        /// </summary>
+        /// <param name="branch">The branch to download</param>
+        /// <param name="ex">The exception is set only if an error occurred</param>
+        /// <returns></returns>
+        public UserCode DownloadScripts(String branch, out Exception ex)
+        {
+            ex = null;
+            if (this.AuthToken == null)
+            {
+                ex = new Exception("Not Signed In");
+                return null;
+            }
+            wcReset();
+
+            NameValueCollection NVC = new NameValueCollection();
+
+            if (!String.IsNullOrEmpty(branch))
+                NVC.Add("branch", branch);
+
+            JObject ret = this.Get("user/code", NVC);
+
+            if(ret.GetValue<int>("ok") == 1)
+            {
+                UserCode code = UserCode.Parse(ret);
+                if (code != null)
+                    return code;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Download scripts from a branch
+        /// NOTE: The exception is dismissed here
+        /// </summary>
+        /// <param name="branch">The branch to download. <para>Will download the currently active branch if omitted</para></param>
+        /// <returns></returns>
+        public UserCode DownloadScripts(String branch = null)
+        {
+            Exception ex;
+            return DownloadScripts(branch, out ex);
+        }
+
+        /// <summary>
+        /// Download scripts from a branch into a folder
+        /// </summary>
+        /// <param name="folder">The folder to download the script files into</param>
+        /// <param name="ex">The exception is set only if an error occurred</param>
+        /// <param name="branch">The branch to download. <para>Will download the currently active branch if omitted</para></param>
+        /// <param name="overwriteFiles">Overwrite any file that exists</param>
+        /// <returns></returns>
+        public UserCode DownloadScriptsToFolder(String folder, out Exception ex, String branch = null, bool overwriteFiles = true)
+        {
+            ex = null;
+            if (this.AuthToken == null)
+            {
+                ex = new Exception("Not Signed In");
+                return null;
+            }
+
+            wcReset();
+
+            UserCode code = DownloadScripts(branch, out ex);
+            if (code == null || ex != null)
+                return null;
+
+            try
+            {
+                folder = System.IO.Path.Combine(folder, code.Branch);
+
+                if (!System.IO.Directory.Exists(folder))
+                    System.IO.Directory.CreateDirectory(folder);
+
+                foreach(KeyValuePair<String, String> KVP in code.Modules)
+                {
+                    String filePath = System.IO.Path.Combine(folder, KVP.Key + ".js");
+
+                    if (!overwriteFiles && System.IO.File.Exists(filePath))
+                        continue;
+
+                    System.IO.StreamWriter sw = new System.IO.StreamWriter(filePath, false);
+                    sw.Write(KVP.Value);
+                    sw.Close();
+                }
+
+                return code;
+            }
+            catch (Exception xex)
+            {
+                ex = xex;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Download scripts from a branch into a folder
+        /// NOTE: The exception is dismissed here
+        /// </summary>
+        /// <param name="folder">The folder to download the script files into</param>
+        /// <param name="branch">The branch to download. <para>Will download the currently active branch if omitted</para></param>
+        /// <param name="overwriteFiles">Overwrite any file that exists</param>
+        /// <returns></returns>
+        public UserCode DownloadScriptsToFolder(String folder, String branch = null, bool overwriteFiles = true)
+        {
+            Exception ex;
+            return DownloadScriptsToFolder(folder, out ex, branch, overwriteFiles);
+        }
+
+        /// <summary>
+        /// Upload scripts to the server
+        /// </summary>
+        /// <param name="code">The branch and code to upload</param>
+        /// <param name="ex">The exception is set only if an error occurred</param>
+        /// <returns></returns>
+        public bool UploadScripts(UserCode code, out Exception ex)
+        {
+            ex = null;
+            if (this.AuthToken == null)
+            {
+                ex = new Exception("Not Signed In");
+                return false;
+            }
+
+            wcReset();
+
+            if(code == null || String.IsNullOrEmpty(code.Branch))
+            {
+                ex = new Exception("Invalid UserCode supplied");
+                return false;
+            }
+
+            JObject UploadData = new JObject();
+            UploadData.Add("branch", code.Branch);
+
+            foreach (KeyValuePair<String, String> KVP in code.Modules)
+                UploadData.Add(KVP.Key, KVP.Value);
+
+            JObject ret = this.Post("user/code", UploadData.ToString(Newtonsoft.Json.Formatting.None));
+
+            return ret.GetValue<int>("ok") == 1;
+        }
+
+        /// <summary>
+        /// Upload scripts to the server
+        /// NOTE: The exception is dismissed here
+        /// </summary>
+        /// <param name="code">The branch and code to upload</param>
+        /// <returns></returns>
+        public bool UploadScripts(UserCode code)
+        {
+            Exception ex;
+            return UploadScripts(code, out ex);
+        }
+
+        /// <summary>
+        /// Upload scripts from a folder to a server
+        /// </summary>
+        /// <param name="branch">The branch name to upload into</param>
+        /// <param name="folder">The folder with the scripts <para>NOTE: should be .js files</para></param>
+        /// <param name="ex">The exception is set only if an error occurred</param>
+        /// <returns></returns>
+        public bool UploadScriptsFromFolder(String branch, String folder, out Exception ex)
+        {
+            ex = null;
+            if (this.AuthToken == null)
+            {
+                ex = new Exception("Not Signed In");
+                return false;
+            }
+
+            wcReset();
+
+            if(!System.IO.Directory.Exists(folder))
+            {
+                ex = new System.IO.DirectoryNotFoundException(folder);
+                return false;
+            }
+
+            try
+            {
+                UserCode code = new UserCode(branch, folder);
+                if (code == null)
+                    return false;
+
+                return UploadScripts(code, out ex);
+            }
+            catch (Exception xex)
+            {
+                ex = xex;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Upload scripts from a folder to a server
+        /// NOTE: The exception is dismissed here
+        /// </summary>
+        /// <param name="branch">The branch name to upload into</param>
+        /// <param name="folder">The folder with the scripts
+        /// <para>NOTE: should be .js files</para></param>
+        /// <returns></returns>
+        public bool UploadScriptsFromFolder(String branch, String folder)
+        {
+            Exception ex;
+            return UploadScriptsFromFolder(branch, folder, out ex);
         }
 
         #endregion
