@@ -15,9 +15,9 @@ A .NET Framework 4.0 Library written in C# for interacting with Screeps REST API
 * Download your code to your local computer
 * Upload code from your local computer
 * Send console commands
+* Retrieve detailed room information
 
 ###### TODO
-* Retrieve detailed room information
 * Figure out how map-stats work
 * More examples!
 
