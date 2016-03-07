@@ -11,13 +11,13 @@ A .NET Framework 4.0 Library written in C# for interacting with Screeps REST API
 * Get leaderboard information
 * Get World Status
 * Subscribe to various streams to get data in real-time.
-
-###### TODO
 * Retrieve room information such as terrain data and structure/creep data
-* Retrieve detailed room information
-* Send console commands
 * Download your code to your local computer
 * Upload code from your local computer
+* Send console commands
+
+###### TODO
+* Retrieve detailed room information
 * Figure out how map-stats work
 * More examples!
 
