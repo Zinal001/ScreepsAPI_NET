@@ -462,7 +462,7 @@ namespace ScreepsAPI_NET
         {
             wcReset();
 
-            JObject ret = this.Get("game/room-terrian", new NameValueCollection() {
+            JObject ret = this.Get("game/room-terrain", new NameValueCollection() {
                 { "room", roomName },
                 { "encoded", false.ToString() }
             });
@@ -486,7 +486,7 @@ namespace ScreepsAPI_NET
         {
             wcReset();
 
-            JObject ret = this.Get("game/room-terrian", new NameValueCollection() {
+            JObject ret = this.Get("game/room-terrain", new NameValueCollection() {
                 { "room", roomName },
                 { "encoded", true.ToString() }
             });
